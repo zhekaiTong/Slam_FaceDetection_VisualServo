@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+import math
+
+import rospy
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
+from std_msgs.msg import Int8
+from opencv_detector.msg import img_predict
+
+
+class img_pose():
+	
+	def __init__(self):
+		self._curr_pose_sub = rospy.Subscriber('/prediction', img_predict, self._impose_callback, queue_size=1)
+		self._marker_pub = rospy.Publisher('/image_marker', MarkerArray, queue_size=10)
+
+		self._markerArray = MarkerArray()
+		self._count = 0
+		self._MARKERS_MAX = 100
+		self._id = 0
+		print '33'
+
+	def _impose_callback(self, data):
+		print data.predict.data
+		mx = 0
+		my = 0
+		if (data.predict.data == 1):
+		    mx = 4.286
+		    my = 1.030
+		if (data.predict.data == 2):
+		    mx = 9.688
+		    my = 7.865
+		if (data.predict.data == 3):
+		    mx = 10.403
+		    my = 4.770
+		if (data.predict.data == 4):
+		    mx = 15.647
+		    my = -0.624
+		if (data.predict.data == 5):
+		    mx = 3.17
+		    my = 5.311
+		if (mx != 0 or my != 0):
+			marker = Marker()
+		   	marker.header.frame_id = "base_link"
+		   	marker.type = marker.SPHERE
+		   	marker.action = marker.ADD
+		   	marker.scale.x = 0.2
+		   	marker.scale.y = 0.2
+		   	marker.scale.z = 0.2
+		   	marker.color.a = 1.0
+		   	marker.color.r = 1.0
+		   	marker.color.g = 1.0
+		   	marker.color.b = 0.0
+		   	#marker.pose.orientation.w = 1.0
+		   	marker.pose.position.x = mx
+		   	marker.pose.position.y = my 
+		   	marker.pose.position.z = 0 
+
+			if(self._count > self._MARKERS_MAX):
+		       	    self._markerArray.markers.pop(0)
+		   	self._markerArray.markers.append(marker)
+		   	for m in self._markerArray.markers:
+		       	    m.id = self._id
+		       	    self._id += 1
+		   	# Publish the MarkerArray
+		   	self._marker_pub.publish(self._markerArray)
+		   	self._count += 1
+		   	rospy.sleep(0.01)
+
+if __name__ == '__main__':
+
+        # Initialize the node and name it.
+        rospy.init_node('image_position')
+        try:
+            ip = img_pose()
+            rospy.spin()    
+        except rospy.ROSInterruptException: pass
+
